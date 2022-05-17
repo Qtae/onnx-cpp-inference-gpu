@@ -156,15 +156,31 @@ int main()
 		std::cout << "Output Dimensions: " << outputDims << std::endl;
 	}
 
-	cv::Mat img = cv::imread("D:/QTAE/ONNXCppRuntime/Image/stitch/01.jpg", cv::IMREAD_GRAYSCALE);
-	cv::Mat img_f(640, 640, CV_32FC1);
-	img.convertTo(img_f, CV_32FC1);
+	cv::Mat img1 = cv::imread("D:/QTAE/ONNXCppRuntime/Image/stitch/01.jpg", cv::IMREAD_GRAYSCALE);
+	cv::Mat img2 = cv::imread("D:/QTAE/ONNXCppRuntime/Image/stitch/02.jpg", cv::IMREAD_GRAYSCALE);
+	cv::Mat img3 = cv::imread("D:/QTAE/ONNXCppRuntime/Image/stitch/03.jpg", cv::IMREAD_GRAYSCALE);
+	cv::Mat img4 = cv::imread("D:/QTAE/ONNXCppRuntime/Image/stitch/04.jpg", cv::IMREAD_GRAYSCALE);
+	cv::Mat img1_f(640, 640, CV_32FC1);
+	cv::Mat img2_f(640, 640, CV_32FC1);
+	cv::Mat img3_f(640, 640, CV_32FC1);
+	cv::Mat img4_f(640, 640, CV_32FC1);
+	img1.convertTo(img1_f, CV_32FC1);
+	img2.convertTo(img2_f, CV_32FC1);
+	img3.convertTo(img3_f, CV_32FC1);
+	img4.convertTo(img4_f, CV_32FC1);
+	std::vector<cv::Mat> images;
+	images.push_back(img1);
+	images.push_back(img2);
+	images.push_back(img3);
+	images.push_back(img4);
+	cv::Mat input_blob;
+	cv::dnn::blobFromImages(images, input_blob, 1.0, cv::Size(640, 640));
 	size_t inputTensorSize = vectorProduct(inputDims);
-	std::vector<float> inputTensorValues(inputTensorSize);
-	inputTensorValues.assign(img_f.begin<float>(), img_f.end<float>());
+	std::vector<float> inputTensorValues(inputTensorSize * 4);
+	inputTensorValues.assign(input_blob.begin<float>(), input_blob.end<float>());
 
 	size_t outputTensorSize = vectorProduct(outputDims);
-	std::vector<float> outputTensorValues(outputTensorSize);
+	std::vector<float> outputTensorValues(outputTensorSize * 4);
 
 	std::vector<const char*> inputNames{ inputName };
 	std::vector<const char*> outputNames{ outputName };
@@ -184,14 +200,14 @@ int main()
 	if (MONITOR)
 		std::cout << "Inference Time: " << (double)(end - start) << " ms" << std::endl;
 
-	start = clock();
-	session.Run(Ort::RunOptions{ nullptr },
-		inputNames.data(), inputTensors.data(), 1,
-		outputNames.data(), outputTensors.data(), 1);
-	end = clock();
-
-	if (MONITOR)
-		std::cout << "Inference Time: " << (double)(end - start) << " ms" << std::endl;
+	//start = clock();
+	//session.Run(Ort::RunOptions{ nullptr },
+	//	inputNames.data(), inputTensors.data(), 1,
+	//	outputNames.data(), outputTensors.data(), 1);
+	//end = clock();
+	//
+	//if (MONITOR)
+	//	std::cout << "Inference Time: " << (double)(end - start) << " ms" << std::endl;
 
 	//outputTensorValues.at(i);
 	return 0;
