@@ -6,6 +6,7 @@
 
 #include "onnxruntime_cxx_api.h"
 #include "opencv2/opencv.hpp"
+#include "Eigen/Eigen"
 
 
 struct DetectionResult
@@ -193,6 +194,7 @@ void DoNMS(std::vector<DetectionResult>& detRes, float iouThresh, float scoreThr
 
 int main()
 {
+	//Ort::Float16_t
 	bool MONITOR = true;
 	std::string modelFilepath = "";
 	std::string instanceName = "BF Segmentation Inference";
@@ -211,7 +213,12 @@ int main()
 
 	Ort::Env* env = new Ort::Env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING, instanceName.c_str());
 	Ort::Session* session;
-	session = new Ort::Session(*env, L"D:/QTAE/ONNXCppRuntime/onnxModels/bf.onnx", *sessionOptions);
+	time_t start1 = clock();
+	session = new Ort::Session(*env, L"D:/QTAE/ONNXCppRuntime/onnxModels/bf_q.onnx", *sessionOptions);
+	time_t end1 = clock();
+	if (MONITOR)
+		std::cout << "Load Time: " << (double)(end1 - start1) << " ms" << std::endl;
+
 	//Ort::Session session(env, L"D:/QTAE/ONNXCppRuntime/onnxModels/bf.onnx", sessionOptions);
 	//Ort::Session session(env, L"D:/QTAE/ONNXCppRuntime/onnxModels/stitch.onnx", sessionOptions);
 	Ort::AllocatorWithDefaultOptions allocator;
@@ -259,24 +266,42 @@ int main()
 	img4.convertTo(img4_f, CV_32FC1);
 
 	size_t inputTensorSize = vectorProduct(inputDims);
-	std::vector<float> inputTensorValues;
+	std::vector<Ort::Float16_t> inputTensorValues;
 	std::vector<float> tmp(inputTensorSize / 4);
+	std::vector<Ort::Float16_t> tmp2(inputTensorSize / 4);
 	memcpy(&tmp[0], img1_f.data, (inputTensorSize / 4) * sizeof(float));
-	inputTensorValues.insert(inputTensorValues.end(), tmp.begin(), tmp.end());
-	memcpy(&tmp[0], img2_f.data, (inputTensorSize / 4) * sizeof(float));
-	inputTensorValues.insert(inputTensorValues.end(), tmp.begin(), tmp.end());
-	memcpy(&tmp[0], img3_f.data, (inputTensorSize / 4) * sizeof(float));
-	inputTensorValues.insert(inputTensorValues.end(), tmp.begin(), tmp.end());
-	memcpy(&tmp[0], img4_f.data, (inputTensorSize / 4) * sizeof(float));
-	inputTensorValues.insert(inputTensorValues.end(), tmp.begin(), tmp.end());
-	for (int i = 0; i < inputTensorValues.size(); ++i)
+	for (int i = 0; i < tmp.size(); ++i)
 	{
-		inputTensorValues[i] /= 255.0;
+		tmp[i] /= 255.0;
+		tmp2[i] = Ort::Float16_t(Eigen::half(tmp[i]).x);
 	}
+	inputTensorValues.insert(inputTensorValues.end(), tmp2.begin(), tmp2.end());
+	memcpy(&tmp[0], img2_f.data, (inputTensorSize / 4) * sizeof(float));
+	for (int i = 0; i < tmp.size(); ++i)
+	{
+		tmp[i] /= 255.0;
+		tmp2[i] = Ort::Float16_t(Eigen::half(tmp[i]).x);
+	}
+	inputTensorValues.insert(inputTensorValues.end(), tmp2.begin(), tmp2.end());
+	memcpy(&tmp[0], img3_f.data, (inputTensorSize / 4) * sizeof(float));
+	for (int i = 0; i < tmp.size(); ++i)
+	{
+		tmp[i] /= 255.0;
+		tmp2[i] = Ort::Float16_t(Eigen::half(tmp[i]).x);
+	}
+	inputTensorValues.insert(inputTensorValues.end(), tmp2.begin(), tmp2.end());
+	memcpy(&tmp[0], img4_f.data, (inputTensorSize / 4) * sizeof(float));
+	for (int i = 0; i < tmp.size(); ++i)
+	{
+		tmp[i] /= 255.0;
+		tmp2[i] = Ort::Float16_t(Eigen::half(tmp[i]).x);
+	}
+	inputTensorValues.insert(inputTensorValues.end(), tmp2.begin(), tmp2.end());
+	
 	//inputTensorValues.assign(img1_f.begin<float>(), img1_f.end<float>());
 
 	size_t outputTensorSize = vectorProduct(outputDims);
-	std::vector<float> outputTensorValues(outputTensorSize);
+	std::vector<Ort::Float16_t> outputTensorValues(outputTensorSize);
 
 	std::vector<const char*> inputNames;
 	std::vector<const char*> outputNames;
@@ -286,8 +311,8 @@ int main()
 	std::vector<Ort::Value> outputTensors;
 
 	Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-	inputTensors.push_back(Ort::Value::CreateTensor<float>(memoryInfo, inputTensorValues.data(), inputTensorSize, inputDims.data(), inputDims.size()));
-	outputTensors.push_back(Ort::Value::CreateTensor<float>(memoryInfo, outputTensorValues.data(), outputTensorSize, outputDims.data(), outputDims.size()));
+	inputTensors.push_back(Ort::Value::CreateTensor<Ort::Float16_t>(memoryInfo, inputTensorValues.data(), inputTensorSize, inputDims.data(), inputDims.size()));
+	outputTensors.push_back(Ort::Value::CreateTensor<Ort::Float16_t>(memoryInfo, outputTensorValues.data(), outputTensorSize, outputDims.data(), outputDims.size()));
 
 	time_t start = clock();
 	session->Run(Ort::RunOptions{ nullptr },

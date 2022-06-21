@@ -4,3 +4,4 @@ onnxModels
 x64
 packages
 ONNXCppRuntime/x64
+eigen
